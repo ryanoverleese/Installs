@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sensor Install</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f6f7f8;
+      padding: 24px;
+    }
+    .card {
+      max-width: 420px;
+      margin: auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: #1f7a63;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #9dbdb4;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    .coords {
+      margin-top: 12px;
+      font-family: monospace;
+      font-size: 13px;
+      background: #f0f0f0;
+      padding: 8px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>Log Sensor Install</h1>
+
+    <button id="installBtn">Capture Location & Log Install</button>
+
+    <div id="status" class="status"></div>
+    <div id="coords" class="coords" style="display:none;"></div>
+  </div>
+
+  <script>
+    const button = document.getElementById("installBtn");
+    const status = document.getElementById("status");
+    const coordsDiv = document.getElementById("coords");
+
+    button.addEventListener("click", () => {
+      status.textContent = "Requesting GPS location…";
+      button.disabled = true;
+
+      if (!navigator.geolocation) {
+        status.textContent = "Geolocation not supported.";
+        button.disabled = false;
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+
+          status.textContent = "Location captured ✔";
+          coordsDiv.style.display = "block";
+          coordsDiv.textContent =
+            `Latitude: ${lat}\nLongitude: ${lon}\nAccuracy: ±${accuracy} m`;
+
+          console.log({ lat, lon, accuracy });
+
+          button.disabled = false;
+        },
+        () => {
+          status.textContent = "Location permission denied or failed.";
+          button.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  </script>
+
+</body>
+</html>
