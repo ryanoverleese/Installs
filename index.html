@@ -48,6 +48,14 @@
       padding: 8px;
       border-radius: 6px;
     }
+    .input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
@@ -55,8 +63,14 @@
   <div class="card">
     <h1>Log Sensor Install</h1>
 
+    <label>Installer Name</label>
+    <input id="installerName" type="text" class="input" />
+
     <label>Installer Serial Number</label>
-    <input id="installerSerial" type="text" style="width:100%;margin-bottom:12px;" />
+    <input id="installerSerial" type="text" class="input" />
+
+    <label>Install Date & Time</label>
+    <input id="installDateTime" type="datetime-local" class="input" />
 
     <button id="installBtn">Capture Location & Log Install</button>
 
@@ -66,8 +80,14 @@
 
   <script>
     const button = document.getElementById("installBtn");
+    const installerNameInput = document.getElementById("installerName");
+    const installerSerialInput = document.getElementById("installerSerial");
+    const installDateTimeInput = document.getElementById("installDateTime");
     const status = document.getElementById("status");
     const coordsDiv = document.getElementById("coords");
+
+    // default date/time
+    installDateTimeInput.value = new Date().toISOString().slice(0,16);
 
     button.addEventListener("click", () => {
       status.textContent = "Requesting GPS location…";
@@ -89,10 +109,21 @@
           status.textContent = "Location captured ✔";
           coordsDiv.style.display = "block";
           coordsDiv.textContent =
-            `Latitude: ${lat}\nLongitude: ${lon}\nAccuracy: ±${accuracyFeet.toFixed(1)} ft`;
+            `Latitude: ${lat}
+Longitude: ${lon}
+Accuracy: ±${accuracyFeet.toFixed(1)} ft`;
 
           const installDateTime = new Date().toISOString();
-          console.log({ lat, lon, accuracyFeet, installDateTime });
+          const record = {
+            installerName: installerNameInput.value,
+            installerSerial: installerSerialInput.value,
+            installDateTime: installDateTimeInput.value,
+            latitude: lat,
+            longitude: lon,
+            accuracyFeet: accuracyFeet.toFixed(1)
+          };
+
+          console.log(record);
 
           button.disabled = false;
         },
