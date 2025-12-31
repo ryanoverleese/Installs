@@ -55,6 +55,9 @@
   <div class="card">
     <h1>Log Sensor Install</h1>
 
+    <label>Installer Serial Number</label>
+    <input id="installerSerial" type="text" style="width:100%;margin-bottom:12px;" />
+
     <button id="installBtn">Capture Location & Log Install</button>
 
     <div id="status" class="status"></div>
@@ -80,14 +83,16 @@
         (position) => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
-          const accuracy = position.coords.accuracy;
+          const accuracyMeters = position.coords.accuracy;
+          const accuracyFeet = accuracyMeters * 3.28084;
 
           status.textContent = "Location captured ✔";
           coordsDiv.style.display = "block";
           coordsDiv.textContent =
-            `Latitude: ${lat}\nLongitude: ${lon}\nAccuracy: ±${accuracy} m`;
+            `Latitude: ${lat}\nLongitude: ${lon}\nAccuracy: ±${accuracyFeet.toFixed(1)} ft`;
 
-          console.log({ lat, lon, accuracy });
+          const installDateTime = new Date().toISOString();
+          console.log({ lat, lon, accuracyFeet, installDateTime });
 
           button.disabled = false;
         },
