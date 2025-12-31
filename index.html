@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installer Tracking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input[type="text"],
+        input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="date"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        #getLocationBtn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        #getLocationBtn:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        
+        #saveBtn {
+            background: #667eea;
+            color: white;
+        }
+        
+        #saveBtn:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+        
+        .location-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 13px;
+        }
+        
+        .location-info.show {
+            display: block;
+        }
+        
+        .location-info p {
+            margin: 5px 0;
+            color: #555;
+        }
+        
+        .location-info strong {
+            color: #333;
+        }
+        
+        .records-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        .records-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .record-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        
+        .record-item p {
+            margin: 5px 0;
+            color: #555;
+        }
+        
+        .no-records {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Installer Tracking</h1>
+        
+        <div id="statusArea" class="status"></div>
+        
+        <div id="locationInfo" class="location-info"></div>
+        
+        <form id="installForm">
+            <div class="form-group">
+                <label for="installerName">Installer Name *</label>
+                <input type="text" id="installerName" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="serialNumber">Serial Number *</label>
+                <input type="text" id="serialNumber" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="installDate">Install Date *</label>
+                <input type="date" id="installDate" required>
+            </div>
+            
+            <div class="button-group">
+                <button type="button" id="getLocationBtn">Get Current Location</button>
+                <button type="submit" id="saveBtn" disabled>Save Install</button>
+            </div>
+        </form>
+        
+        <div class="records-section">
+            <h2>Saved Installs</h2>
+            <div id="recordsList"></div>
+        </div>
+    </div>
+    
+    <script>
+        // State management
+        let currentLocation = null;
+        
+        // DOM elements
+        const form = document.getElementById('installForm');
+        const installerNameInput = document.getElementById('installerName');
+        const serialNumberInput = document.getElementById('serialNumber');
+        const installDateInput = document.getElementById('installDate');
+        const getLocationBtn = document.getElementById('getLocationBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusArea = document.getElementById('statusArea');
+        const locationInfo = document.getElementById('locationInfo');
+        const recordsList = document.getElementById('recordsList');
+        
+        // Initialize
+        function init() {
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            installDateInput.value = today;
+            
+            // Load and display saved records
+            displayRecords();
+        }
+        
+        // Show status message
+        function showStatus(message, type = 'info') {
+            statusArea.textContent = message;
+            statusArea.className = `status ${type}`;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusArea.className = 'status';
+            }, 5000);
+        }
+        
+        // Get current location
+        getLocationBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                showStatus('Geolocation is not supported by your browser', 'error');
+                return;
+            }
+            
+            getLocationBtn.disabled = true;
+            getLocationBtn.textContent = 'Getting Location...';
+            showStatus('Requesting location...', 'info');
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                    
+                    // Show location info
+                    locationInfo.innerHTML = `
+                        <p><strong>Location Captured:</strong></p>
+                        <p>Latitude: ${currentLocation.latitude.toFixed(6)}</p>
+                        <p>Longitude: ${currentLocation.longitude.toFixed(6)}</p>
+                        <p>Accuracy: ${currentLocation.accuracy.toFixed(2)} meters</p>
+                    `;
+                    locationInfo.classList.add('show');
+                    
+                    // Enable save button
+                    saveBtn.disabled = false;
+                    
+                    getLocationBtn.disabled = false;
+                    getLocationBtn.textContent = 'Get Current Location';
+                    showStatus('Location captured successfully!', 'success');
+                },
+                (error) => {
+                    let errorMessage = 'Unable to retrieve location';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Location permission denied';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Location information unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'Location request timed out';
+                            break;
+                    }
+                    
+                    showStatus(errorMessage, 'error');
+                    getLocationBtn.disabled = false;
+                    getLocationBtn.textContent = 'Get Current Location';
+                }
+            );
+        });
+        
+        // Handle form submission
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Validate fields
+            const installerName = installerNameInput.value.trim();
+            const serialNumber = serialNumberInput.value.trim();
+            const installDate = installDateInput.value;
+            
+            if (!installerName) {
+                showStatus('Please enter installer name', 'error');
+                return;
+            }
+            
+            if (!serialNumber) {
+                showStatus('Please enter serial number', 'error');
+                return;
+            }
+            
+            if (!installDate) {
+                showStatus('Please select install date', 'error');
+                return;
+            }
+            
+            if (!currentLocation) {
+                showStatus('Please capture location first', 'error');
+                return;
+            }
+            
+            // Create install record
+            const installRecord = {
+                installer: installerName,
+                serialNumber: serialNumber,
+                installDate: installDate,
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                accuracy: currentLocation.accuracy,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Save to localStorage
+            saveInstallRecord(installRecord);
+            
+            // Reset form
+            form.reset();
+            installDateInput.value = new Date().toISOString().split('T')[0];
+            currentLocation = null;
+            saveBtn.disabled = true;
+            locationInfo.classList.remove('show');
+            
+            showStatus('Install record saved successfully!', 'success');
+            
+            // Refresh records display
+            displayRecords();
+        });
+        
+        // Save install record to localStorage
+        function saveInstallRecord(record) {
+            let records = getInstallRecords();
+            records.push(record);
+            localStorage.setItem('installRecords', JSON.stringify(records));
+        }
+        
+        // Get all install records from localStorage
+        function getInstallRecords() {
+            const recordsJson = localStorage.getItem('installRecords');
+            return recordsJson ? JSON.parse(recordsJson) : [];
+        }
+        
+        // Display all records
+        function displayRecords() {
+            const records = getInstallRecords();
+            
+            if (records.length === 0) {
+                recordsList.innerHTML = '<div class="no-records">No install records yet</div>';
+                return;
+            }
+            
+            // Sort by timestamp (newest first)
+            records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            recordsList.innerHTML = records.map(record => `
+                <div class="record-item">
+                    <p><strong>Installer:</strong> ${record.installer}</p>
+                    <p><strong>Serial Number:</strong> ${record.serialNumber}</p>
+                    <p><strong>Install Date:</strong> ${record.installDate}</p>
+                    <p><strong>Location:</strong> ${record.latitude.toFixed(6)}, ${record.longitude.toFixed(6)}</p>
+                    <p><strong>Accuracy:</strong> ${record.accuracy.toFixed(2)} meters</p>
+                    <p><strong>Saved:</strong> ${new Date(record.timestamp).toLocaleString()}</p>
+                </div>
+            `).join('');
+        }
+        
+        // Initialize app
+        init();
+    </script>
+</body>
+</html>
