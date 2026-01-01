@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Installer GPS Capture</title>
+  <title>Sensor Install</title>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -22,19 +22,6 @@
       margin-top: 0;
       font-size: 20px;
     }
-    label {
-      font-size: 14px;
-      display: block;
-      margin-bottom: 4px;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      margin-bottom: 14px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
     button {
       width: 100%;
       padding: 14px;
@@ -44,13 +31,13 @@
       background: #1f7a63;
       color: white;
       cursor: pointer;
-      margin-top: 8px;
     }
     button:disabled {
       background: #9dbdb4;
+      cursor: not-allowed;
     }
     .status {
-      margin-top: 14px;
+      margin-top: 16px;
       font-size: 14px;
     }
     .coords {
@@ -61,107 +48,149 @@
       padding: 8px;
       border-radius: 6px;
     }
+    .input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
 
-<div class="card">
-  <h1>Log Sensor Install</h1>
+  <div class="card">
+    <h1>Log Sensor Install</h1>
 
-  <label>Installer Name</label>
-  <input id="installerName" type="text" />
+    <label>Installer Name</label>
+    <input id="installerName" type="text" class="input" />
 
-  <label>Installer Serial Number</label>
-  <input id="installerSerial" type="text" />
+    <label>Installer Serial Number</label>
+    <input id="installerSerial" type="text" class="input" />
 
-  <label>Install Date & Time</label>
-  <input id="installDateTime" type="datetime-local" />
+    <label>Install Date & Time</label>
+    <input id="installDateTime" type="datetime-local" class="input" />
 
-  <button id="gpsBtn">Get Precise Location</button>
+    <button id="installBtn">Instant GPS Capture</button>
+    <button id="slowBtn" style="margin-top:10px;background:#555;">8-Second GPS Capture</button>
+    <button id="slowerBtn" style="margin-top:10px;background:#777;">12-Second GPS Capture</button>
+    <button id="slowestBtn" style="margin-top:10px;background:#999;">20-Second GPS Capture</button>
 
-  <div id="status" class="status"></div>
-  <div id="coords" class="coords" style="display:none;"></div>
-</div>
+    <button id="slowBtn" style="margin-top:10px;background:#555;">8‑Second GPS Capture</button>
 
-<script>
-  const gpsBtn = document.getElementById("gpsBtn");
-  const status = document.getElementById("status");
-  const coordsDiv = document.getElementById("coords");
+    <div id="status" class="status"></div>
+    <div id="coords" class="coords" style="display:none;"></div>
+  </div>
 
-  const installerNameInput = document.getElementById("installerName");
-  const installerSerialInput = document.getElementById("installerSerial");
-  const installDateTimeInput = document.getElementById("installDateTime");
+  <script>
+    const button = document.getElementById("installBtn");
+    const slowButton = document.getElementById("slowBtn");
+    const slowerButton = document.getElementById("slowerBtn");
+    const slowestButton = document.getElementById("slowestBtn");
+    const installerNameInput = document.getElementById("installerName");
+    const installerSerialInput = document.getElementById("installerSerial");
+    const installDateTimeInput = document.getElementById("installDateTime");
+    const status = document.getElementById("status");
+    const coordsDiv = document.getElementById("coords");
 
-  installDateTimeInput.value = new Date().toISOString().slice(0,16);
+    // default date/time
+    installDateTimeInput.value = new Date().toISOString().slice(0,16);
 
-  function getBestLocation(durationMs = 8000) {
-    return new Promise((resolve, reject) => {
+    function captureLocation(delayMs = 0) {
+      status.textContent = delayMs ? "Waiting for GPS (8 seconds)…" : "Requesting GPS location…";
+      button.disabled = true;
+      slowButton.disabled = true;
+      slowerButton.disabled = true;
+      slowestButton.disabled = true;
+
+      setTimeout(() => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const accuracyFeet = position.coords.accuracy * 3.28084;
+
+            status.textContent = "Location captured ✔";
+            coordsDiv.style.display = "block";
+            coordsDiv.textContent = `Latitude: ${lat}
+Longitude: ${lon}
+Accuracy: ±${accuracyFeet.toFixed(1)} ft`;
+
+            const record = {
+              installerName: installerNameInput.value,
+              installerSerial: installerSerialInput.value,
+              installDateTime: installDateTimeInput.value,
+              latitude: lat,
+              longitude: lon,
+              accuracyFeet: accuracyFeet.toFixed(1)
+            };
+
+            console.log(record);
+            button.disabled = false;
+            slowButton.disabled = false;
+            slowerButton.disabled = false;
+            slowestButton.disabled = false;
+          },
+          () => {
+            status.textContent = "Location failed.";
+            button.disabled = false;
+            slowButton.disabled = false;
+          },
+          { enableHighAccuracy: true, timeout: 15000 }
+        );
+      }, delayMs);
+    }
+
+    button.addEventListener("click", () => captureLocation(0));
+    slowButton.addEventListener("click", () => captureLocation(8000));
+    slowerButton.addEventListener("click", () => captureLocation(12000));
+    slowestButton.addEventListener("click", () => captureLocation(20000));("click", () => captureLocation(8000));("click", () => {
+      status.textContent = "Requesting GPS location…";
+      button.disabled = true;
+
       if (!navigator.geolocation) {
-        reject("Geolocation not supported");
+        status.textContent = "Geolocation not supported.";
+        button.disabled = false;
         return;
       }
 
-      let best = null;
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const accuracyMeters = position.coords.accuracy;
+          const accuracyFeet = accuracyMeters * 3.28084;
 
-      const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          if (!best || pos.coords.accuracy < best.coords.accuracy) {
-            best = pos;
-          }
+          status.textContent = "Location captured ✔";
+          coordsDiv.style.display = "block";
+          coordsDiv.textContent =
+            `Latitude: ${lat}
+Longitude: ${lon}
+Accuracy: ±${accuracyFeet.toFixed(1)} ft`;
+
+          const installDateTime = new Date().toISOString();
+          const record = {
+            installerName: installerNameInput.value,
+            installerSerial: installerSerialInput.value,
+            installDateTime: installDateTimeInput.value,
+            latitude: lat,
+            longitude: lon,
+            accuracyFeet: accuracyFeet.toFixed(1)
+          };
+
+          console.log(record);
+
+          button.disabled = false;
         },
-        (err) => {
-          navigator.geolocation.clearWatch(watchId);
-          reject(err.message);
+        () => {
+          status.textContent = "Location permission denied or failed.";
+          button.disabled = false;
         },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 10000 }
       );
-
-      setTimeout(() => {
-        navigator.geolocation.clearWatch(watchId);
-        if (best) resolve(best);
-        else reject("No GPS fix");
-      }, durationMs);
     });
-  }
-
-  gpsBtn.addEventListener("click", () => {
-    status.textContent = "Refining GPS… please wait";
-    gpsBtn.disabled = true;
-    coordsDiv.style.display = "none";
-
-    getBestLocation(8000)
-      .then((pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const accuracyFeet = pos.coords.accuracy * 3.28084;
-
-        const record = {
-          installerName: installerNameInput.value,
-          installerSerial: installerSerialInput.value,
-          installDateTime: installDateTimeInput.value,
-          latitude: lat,
-          longitude: lon,
-          accuracyFeet: accuracyFeet.toFixed(1),
-          capturedAt: new Date().toISOString()
-        };
-
-        status.textContent = "Location locked ✔";
-        coordsDiv.style.display = "block";
-        coordsDiv.textContent =
-          `Lat: ${lat}\nLon: ${lon}\nAccuracy: ±${accuracyFeet.toFixed(1)} ft`;
-
-        console.log("Install record:", record);
-        gpsBtn.disabled = false;
-      })
-      .catch((err) => {
-        status.textContent = "GPS failed: " + err;
-        gpsBtn.disabled = false;
-      });
-  });
-</script>
+  </script>
 
 </body>
 </html>
