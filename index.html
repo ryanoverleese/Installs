@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sensor Install</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sensor Install Logger</title>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -17,10 +17,25 @@
       border-radius: 12px;
       padding: 24px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      box-sizing: border-box;
     }
     h1 {
       margin-top: 0;
       font-size: 20px;
+    }
+    label {
+      font-size: 14px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
     }
     button {
       width: 100%;
@@ -28,12 +43,16 @@
       font-size: 16px;
       border-radius: 8px;
       border: none;
-      background: #1f7a63;
       color: white;
       cursor: pointer;
+      margin-top: 10px;
     }
+    .instant { background: #1f7a63; }
+    .s8 { background: #555; }
+    .s12 { background: #777; }
+    .s20 { background: #999; }
     button:disabled {
-      background: #9dbdb4;
+      background: #bbb;
       cursor: not-allowed;
     }
     .status {
@@ -47,15 +66,7 @@
       background: #f0f0f0;
       padding: 8px;
       border-radius: 6px;
-    }
-    .input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 12px;
-      margin-bottom: 14px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      white-space: pre-line;
     }
   </style>
 </head>
@@ -67,126 +78,90 @@
     <label>Installer Name</label>
     <input id="installerName" type="text" class="input" />
 
-    <label>Installer Serial Number</label>
+    <label>Probe Serial Number</label>
     <input id="installerSerial" type="text" class="input" />
 
     <label>Install Date & Time</label>
     <input id="installDateTime" type="datetime-local" class="input" />
 
-    <button id="installBtn">Instant GPS Capture</button>
-    <button id="slowBtn" style="margin-top:10px;background:#555;">8-Second GPS Capture</button>
+    <button class="instant" id="btn0">Instant GPS Capture</button>
+    <button class="s8" id="btn8">8-Second GPS Capture</button>
+    <button class="s12" id="btn12">12-Second GPS Capture</button>
+    <button class="s20" id="btn20">20-Second GPS Capture</button>
 
     <div id="status" class="status"></div>
     <div id="coords" class="coords" style="display:none;"></div>
   </div>
 
   <script>
-    const button = document.getElementById("installBtn");
-    const slowButton = document.getElementById("slowBtn");
-    const slowerButton = document.getElementById("slowerBtn");
-    const slowestButton = document.getElementById("slowestBtn");
     const installerNameInput = document.getElementById("installerName");
     const installerSerialInput = document.getElementById("installerSerial");
     const installDateTimeInput = document.getElementById("installDateTime");
     const status = document.getElementById("status");
     const coordsDiv = document.getElementById("coords");
 
-    // default date/time
+    const buttons = {
+      0: document.getElementById("btn0"),
+      8000: document.getElementById("btn8"),
+      12000: document.getElementById("btn12"),
+      20000: document.getElementById("btn20")
+    };
+
     installDateTimeInput.value = new Date().toISOString().slice(0,16);
 
-    function captureLocation(delayMs = 0) {
-      status.textContent = delayMs ? "Waiting for GPS (8 seconds)…" : "Requesting GPS location…";
-      button.disabled = true;
-      slowButton.disabled = true;
-      slowerButton.disabled = true;
-      slowestButton.disabled = true;
+    function setButtonsDisabled(state) {
+      Object.values(buttons).forEach(b => b.disabled = state);
+    }
+
+    function captureLocation(delayMs) {
+      status.textContent = delayMs ? `Waiting ${delayMs/1000}s for GPS…` : "Requesting GPS location…";
+      setButtonsDisabled(true);
 
       setTimeout(() => {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const accuracyFeet = position.coords.accuracy * 3.28084;
+        if (!navigator.geolocation) {
+          status.textContent = "Geolocation not supported.";
+          setButtonsDisabled(false);
+          return;
+        }
 
-            status.textContent = "Location captured ✔";
-            coordsDiv.style.display = "block";
-            coordsDiv.textContent = `Latitude: ${lat}
-Longitude: ${lon}
-Accuracy: ±${accuracyFeet.toFixed(1)} ft`;
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const accuracyFeet = pos.coords.accuracy * 3.28084;
 
             const record = {
               installerName: installerNameInput.value,
-              installerSerial: installerSerialInput.value,
+              probeSerial: installerSerialInput.value,
               installDateTime: installDateTimeInput.value,
               latitude: lat,
               longitude: lon,
-              accuracyFeet: accuracyFeet.toFixed(1)
+              accuracyFeet: accuracyFeet.toFixed(1),
+              captureDelaySeconds: delayMs / 1000,
+              timestamp: new Date().toISOString()
             };
 
+            status.textContent = "Location captured ✔";
+            coordsDiv.style.display = "block";
+            coordsDiv.textContent =
+              `Latitude: ${lat}\nLongitude: ${lon}\nAccuracy: ±${accuracyFeet.toFixed(1)} ft\nDelay: ${delayMs/1000}s`;
+
             console.log(record);
-            button.disabled = false;
-            slowButton.disabled = false;
-            slowerButton.disabled = false;
-            slowestButton.disabled = false;
+            setButtonsDisabled(false);
           },
           () => {
-            status.textContent = "Location failed.";
-            button.disabled = false;
-            slowButton.disabled = false;
+            status.textContent = "Location failed or permission denied.";
+            setButtonsDisabled(false);
           },
-          { enableHighAccuracy: true, timeout: 15000 }
+          { enableHighAccuracy: true, timeout: 20000 }
         );
       }, delayMs);
     }
 
-    button.addEventListener("click", () => captureLocation(0));
-    slowButton.addEventListener("click", () => captureLocation(8000));
-    slowerButton.addEventListener("click", () => captureLocation(12000));
-    slowestButton.addEventListener("click", () => captureLocation(20000));("click", () => captureLocation(8000));("click", () => {
-      status.textContent = "Requesting GPS location…";
-      button.disabled = true;
-
-      if (!navigator.geolocation) {
-        status.textContent = "Geolocation not supported.";
-        button.disabled = false;
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          const accuracyMeters = position.coords.accuracy;
-          const accuracyFeet = accuracyMeters * 3.28084;
-
-          status.textContent = "Location captured ✔";
-          coordsDiv.style.display = "block";
-          coordsDiv.textContent =
-            `Latitude: ${lat}
-Longitude: ${lon}
-Accuracy: ±${accuracyFeet.toFixed(1)} ft`;
-
-          const installDateTime = new Date().toISOString();
-          const record = {
-            installerName: installerNameInput.value,
-            installerSerial: installerSerialInput.value,
-            installDateTime: installDateTimeInput.value,
-            latitude: lat,
-            longitude: lon,
-            accuracyFeet: accuracyFeet.toFixed(1)
-          };
-
-          console.log(record);
-
-          button.disabled = false;
-        },
-        () => {
-          status.textContent = "Location permission denied or failed.";
-          button.disabled = false;
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    });
+    buttons[0].onclick = () => captureLocation(0);
+    buttons[8000].onclick = () => captureLocation(8000);
+    buttons[12000].onclick = () => captureLocation(12000);
+    buttons[20000].onclick = () => captureLocation(20000);
   </script>
 
 </body>
